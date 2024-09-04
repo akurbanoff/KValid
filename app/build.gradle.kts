@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.jetbrains.kotlin.android)
+    alias(libs.plugins.kotlin.parcelize)
 }
 
 android {
@@ -41,4 +42,8 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(kotlin("reflect"))
+    testImplementation(libs.junit)
+    testImplementation(libs.mockito)
+    testImplementation(libs.androidx.core.testing)
+    testImplementation(libs.asserttj)
 }

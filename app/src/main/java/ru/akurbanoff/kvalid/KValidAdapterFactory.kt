@@ -1,6 +1,8 @@
 package ru.akurbanoff.kvalid
 
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import com.google.gson.Gson
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.SerializationException
@@ -22,8 +24,10 @@ import kotlin.reflect.full.memberProperties
 class KValidAdapterFactory(
     private val baseResponseModel: Class<*>? = null
 ): CallAdapter.Factory(){
+    @RequiresApi(Build.VERSION_CODES.N)
     override fun get(type: Type, annotations: Array<out Annotation>, retrofit: Retrofit): CallAdapter<*, *>? {
-        val expectedModelKeys = getJsonKeys()
+        val jsonHelper = JsonHelper()
+        val expectedModelKeys = jsonHelper.getJsonKeys()
         var responseType = getParameterUpperBound(0, type as ParameterizedType)
         var responseClass = getRawType(responseType)
 
@@ -59,64 +63,4 @@ class KValidAdapterFactory(
 
         return null
     }
-
-    private fun getJsonKeys(): Set<String>{
-        var keys = emptySet<String>()
-        val json = Json { ignoreUnknownKeys = true }
-        val strategy = object: DeserializationStrategy<JsonObject?> {
-            override val descriptor: SerialDescriptor
-                get() = buildClassSerialDescriptor("JsonObject")
-
-            override fun deserialize(decoder: Decoder): JsonObject? {
-                try {
-                    val input = decoder as? JsonDecoder
-                        ?: throw SerializationException("Expected JsonDecoder")
-                    // Декодируем JSON в JsonElement
-                    return input.decodeJsonElement().jsonObject
-                } catch (e: IllegalArgumentException){
-                    Log.w("IllegalArgument", "can`t convert response data to expected model")
-                    return null
-                }
-            }
-        }
-        if(responseHolder.apiResponse != null) {
-            val jsonObject = json.decodeFromString(
-                deserializer = strategy,
-                string = responseHolder.apiResponse!!
-            )
-
-            keys = collectKeys(jsonObject)
-        }
-
-        return keys
-    }
-
-    private fun collectKeys(json: JsonElement?): Set<String> {
-        if(json == null) return emptySet()
-
-        val keys = mutableSetOf<String>()
-        when (json) {
-            is JsonObject -> {
-                // Добавляем ключи текущего объекта
-                keys.addAll(json.keys)
-                // Рекурсивно обходим вложенные объекты
-                json.forEach { (_, value) -> collectKeys(value) }
-            }
-            is JsonArray -> {
-                // Обходим элементы массива
-                json.forEach { collectKeys(it) }
-            }
-            is JsonElement -> {
-                // Добавляем ключи текущего объекта
-                keys.addAll(json.jsonObject.keys)
-                // Рекурсивно обходим вложенные объекты
-                json.jsonObject.forEach { (_, value) -> collectKeys(value) }
-            }
-            // Для других типов данных (числа, строки и т.д.) ничего не делаем
-            else -> {}
-        }
-        return keys
-    }
-
-
 }
